@@ -13,23 +13,6 @@ import (
 	"github.com/inconshreveable/log15"
 )
 
-type Campsites struct {
-	Campsites map[string]Campsite `json:"campsites"`
-	Count     int                 `json:"count"`
-}
-
-type Campsite struct {
-	Availabilities      map[string]string `json:"availabilities"`
-	CampsiteID          string            `json:"campsite_id"`
-	CampsiteReserveType string            `json:"campsite_reserve_type"`
-	CampsiteType        string            `json:"campsite_type"`
-	Loop                string            `json:"loop"`
-	MaxNumPeople        int               `json:"max_num_people"`
-	MinNumPeople        int               `json:"min_num_people"`
-	Site                string            `json:"site"`
-	TypeOfUse           string            `json:"type_of_use"`
-}
-
 // ** HERE
 // then connect to text/email
 // then convert to CLI app
@@ -56,7 +39,7 @@ func main() {
 
 	campground := 231969
 	checkInDate := "2022-06-01"
-	checkOutDate := "2022-06-02"
+	checkOutDate := "2022-06-04"
 
 	l.Info("Searching recreation.gov...", "campground", campground, "checkIn", checkInDate, "checkOut", checkOutDate)
 
@@ -165,4 +148,5 @@ Outer:
 	if len(results) == 0 {
 		l.Info("Sorry, no available campsites were found for the full date range")
 	}
+
 }
