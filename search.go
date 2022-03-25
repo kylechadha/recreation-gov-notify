@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 const suggestURL = "https://www.recreation.gov/api/search/suggest?q=%s&geocoder=true"
@@ -38,7 +39,7 @@ type Campground struct {
 func Suggest(query string) ([]Campground, error) {
 	client := http.Client{} // ** Create a recreationGovClient type
 
-	url := fmt.Sprintf(suggestURL, query)
+	url := fmt.Sprintf(suggestURL, url.QueryEscape(query))
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

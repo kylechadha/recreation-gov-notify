@@ -40,27 +40,42 @@ func main() {
 		l.SetHandler(log15.LvlFilterHandler(log15.LvlInfo, log15.StdoutHandler))
 	}
 
-	// ** If you name these in a standardized way per twilio docs, the client might be able to grab the env vars automatically
-	accountSid := os.Getenv("TWIL_ACCOUNT_SID")
-	authToken := os.Getenv("TWIL_AUTH_TOKEN")
-	from := os.Getenv("TWIL_FROM")
-	smsNotify := NewSMSNotifier(l, accountSid, authToken, from)
+	from := os.Getenv("TWILIO_FROM")
+	smsNotify := NewSMSNotifier(l, from)
 
-	fmt.Println("What campground are you looking for?")
+	fmt.Println("Whatcha searching for? (Enter a campground or area)")
+	displayed := false
+
+	var campgrounds []Campground
+	for !displayed {
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		searchQuery := strings.Replace(input, "\n", "", -1) // convert CRLF to LF
+
+		var err error
+		campgrounds, err = Suggest(searchQuery)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for i, campground := range campgrounds {
+			if campground.EntityType != "campground" {
+				continue
+			}
+			if !displayed {
+				fmt.Println("Select the number that best matches")
+				displayed = true
+			}
+			campgrounds[i].Name = strings.Title(strings.ToLower(campground.Name))
+			fmt.Printf("[%d] %s\n", i+1, campgrounds[i].Name)
+		}
+
+		if !displayed {
+			fmt.Println("Sorry! We didn't find any campgrounds with that query. Try again?")
+		}
+	}
+
 	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
-	searchQuery := strings.Replace(input, "\n", "", -1) // convert CRLF to LF
-
-	campgrounds, err := Suggest(searchQuery)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Select the number that best matches")
-	for i, campground := range campgrounds {
-		campgrounds[i].Name = strings.ToTitle(campground.Name)
-		fmt.Printf("[%d] %s\n", i+1, campground.Name)
-	}
-	reader = bufio.NewReader(os.Stdin)
 	char, _, err := reader.ReadRune()
 	if err != nil {
 		log.Fatal(err)
@@ -183,9 +198,10 @@ Outer:
 		l.Info(fmt.Sprintf("Site %s is available", site))
 		results = append(results, site)
 	}
-	if len(results) == 0 {
-		l.Info("Sorry, no available campsites were found for the full date range")
-	}
 
-	smsNotify.Notify(phoneNumber, campground.Name, checkInDate, checkOutDate, results)
+	if len(results) == 0 {
+		l.Info("Sorry, no available campsites were found for your dates")
+	} else {
+		smsNotify.Notify(phoneNumber, campground.Name, checkInDate, checkOutDate, results)
+	}
 }
