@@ -10,7 +10,7 @@ import (
 )
 
 type Notifier interface {
-	Notify(to string, available []string) error
+	Notify(to string, campground, checkInDate, checkOutDate string, available []string) error
 }
 
 type SMSNotifier struct {
@@ -30,17 +30,18 @@ func NewSMSNotifier(l log15.Logger, accountSid string, authToken string, from st
 	}
 }
 
-func (n SMSNotifier) Notify(to string, available []string) error {
+func (n SMSNotifier) Notify(to string, campground, checkInDate, checkOutDate string, available []string) error {
 	params := &openapi.CreateMessageParams{}
 	params.SetTo(to)
 	params.SetFrom(n.from)
-	params.SetBody(fmt.Sprintf("Good news from the recreation.gov notifier! The following sites are available: %s", strings.Join(available, ", ")))
+	params.SetBody(`Good news from the (very unofficial) Recreation.gov Notifier!\n` +
+		fmt.Sprintf("The following sites are available for %s from %s to %s: %s", campground, checkInDate, checkOutDate, strings.Join(available, ", ")))
 
 	resp, err := n.client.ApiV2010.CreateMessage(params)
 	if err != nil {
 		return err
 	}
 
-	n.l.Debug("SMS message sent", "status", resp.Status, "to", to)
+	n.l.Debug("SMS message sent", "status", *resp.Status, "to", to)
 	return nil
 }

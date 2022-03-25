@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -8,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/inconshreveable/log15"
@@ -37,11 +40,47 @@ func main() {
 		l.SetHandler(log15.LvlFilterHandler(log15.LvlInfo, log15.StdoutHandler))
 	}
 
-	campground := 231969
+	// ** If you name these in a standardized way per twilio docs, the client might be able to grab the env vars automatically
+	accountSid := os.Getenv("TWIL_ACCOUNT_SID")
+	authToken := os.Getenv("TWIL_AUTH_TOKEN")
+	from := os.Getenv("TWIL_FROM")
+	smsNotify := NewSMSNotifier(l, accountSid, authToken, from)
+
+	fmt.Println("What campground are you looking for?")
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	searchQuery := strings.Replace(input, "\n", "", -1) // convert CRLF to LF
+
+	campgrounds, err := Suggest(searchQuery)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Select the number that best matches")
+	for i, campground := range campgrounds {
+		campgrounds[i].Name = strings.ToTitle(campground.Name)
+		fmt.Printf("[%d] %s\n", i+1, campground.Name)
+	}
+	reader = bufio.NewReader(os.Stdin)
+	char, _, err := reader.ReadRune()
+	if err != nil {
+		log.Fatal(err)
+	}
+	choice, err := strconv.Atoi(string(char))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	campground := campgrounds[choice-1]
+	campgroundID, err := strconv.Atoi(campground.EntityID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	checkInDate := "2022-06-01"
 	checkOutDate := "2022-06-04"
+	phoneNumber := "+18582310672"
 
-	l.Info("Searching recreation.gov...", "campground", campground, "checkIn", checkInDate, "checkOut", checkOutDate)
+	l.Info("Searching recreation.gov...", "campground", campground.Name, "checkIn", checkInDate, "checkOut", checkOutDate)
 
 	st, err := time.Parse("2006-01-02", checkInDate)
 	if err != nil {
@@ -78,11 +117,11 @@ func main() {
 	st = initial
 
 	available := make(map[string]map[string]bool)
-	baseURL := fmt.Sprintf("https://www.recreation.gov/api/camps/availability/campground/%d/month", campground)
+	u := fmt.Sprintf(availabilityURL, campgroundID)
 	for _, m := range months {
 		l.Debug("Requesting data", "month", m)
 
-		req, err := http.NewRequest("GET", baseURL, nil)
+		req, err := http.NewRequest("GET", u, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -108,13 +147,13 @@ func main() {
 			log.Fatal(resp.StatusCode, ": ", string(bytes))
 		}
 
-		var cs Campsites
-		err = json.NewDecoder(resp.Body).Decode(&cs)
+		var ar AvailabilityResponse
+		err = json.NewDecoder(resp.Body).Decode(&ar)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		for _, c := range cs.Campsites {
+		for _, c := range ar.Campsites {
 			for date, a := range c.Availabilities {
 				if a == "Available" {
 					if available[c.Site] == nil {
@@ -144,9 +183,9 @@ Outer:
 		l.Info(fmt.Sprintf("Site %s is available", site))
 		results = append(results, site)
 	}
-
 	if len(results) == 0 {
 		l.Info("Sorry, no available campsites were found for the full date range")
 	}
 
+	smsNotify.Notify(phoneNumber, campground.Name, checkInDate, checkOutDate, results)
 }
