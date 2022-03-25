@@ -1,4 +1,4 @@
-package main
+package notify
 
 import (
 	"fmt"
@@ -8,10 +8,6 @@ import (
 	"github.com/twilio/twilio-go"
 	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 )
-
-type Notifier interface {
-	Notify(to string, campground, checkInDate, checkOutDate string, available []string) error
-}
 
 type SMSNotifier struct {
 	l      log15.Logger

@@ -14,28 +14,6 @@ type SuggestResponse struct {
 	InventorySuggestions []Campground `json:"inventory_suggestions"`
 }
 
-type Campground struct {
-	CampsiteReserveType []string `json:"campsite_reserve_type"`
-	CampsiteTypeOfUse   []string `json:"campsite_type_of_use"`
-	City                string   `json:"city"`
-	CountryCode         string   `json:"country_code"`
-	EntityID            string   `json:"entity_id"`
-	EntityType          string   `json:"entity_type"`
-	IsInventory         bool     `json:"is_inventory"`
-	Lat                 string   `json:"lat"`
-	Lng                 string   `json:"lng"`
-	Name                string   `json:"name"`
-	OrgID               string   `json:"org_id"`
-	OrgName             string   `json:"org_name"`
-	ParentEntityID      string   `json:"parent_entity_id"`
-	ParentEntityType    string   `json:"parent_entity_type"`
-	ParentName          string   `json:"parent_name"`
-	PreviewImageURL     string   `json:"preview_image_url"`
-	Reservable          bool     `json:"reservable"`
-	StateCode           string   `json:"state_code"`
-	Text                string   `json:"text"`
-}
-
 func Suggest(query string) ([]Campground, error) {
 	client := http.Client{} // ** Create a recreationGovClient type
 
