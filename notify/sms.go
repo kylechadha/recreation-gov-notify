@@ -1,3 +1,6 @@
+/*
+Copyright © 2022 Kyle Chadha @kylechadha
+*/
 package notify
 
 import (

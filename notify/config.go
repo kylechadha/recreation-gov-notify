@@ -6,7 +6,7 @@ type Config struct {
 	Debug        bool
 	PollInterval time.Duration
 
-	CampgroundID int
+	CampgroundID string
 	CheckInDate  string
 	CheckOutDate string
 }

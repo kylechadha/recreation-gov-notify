@@ -1,3 +1,6 @@
+/*
+Copyright © 2022 Kyle Chadha @kylechadha
+*/
 package notify
 
 import (
@@ -6,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/inconshreveable/log15"
@@ -80,26 +84,27 @@ func (c *Client) Search(query string) ([]Campground, error) {
 	}
 
 	// Filter non-campgrounds from the search results.
-	i := 0
-	for _, c := range sr.Campgrounds {
+	end := 0
+	for i, c := range sr.Campgrounds {
 		if c.EntityType == "campground" {
-			sr.Campgrounds[i] = c
-			i++
+			sr.Campgrounds[end] = sr.Campgrounds[i]
+			sr.Campgrounds[end].Name = strings.Title(strings.ToLower(c.Name))
+			end++
 		}
 	}
 
-	sr.Campgrounds = sr.Campgrounds[:i]
+	sr.Campgrounds = sr.Campgrounds[:end]
 	return sr.Campgrounds, nil
 }
 
-const availEndpoint = "/camps/availability/campground/%d/month"
+const availEndpoint = "/camps/availability/campground/%s/month"
 
 type AvailabilityResponse struct {
 	Campsites map[string]Campsite `json:"campsites"`
 	Count     int                 `json:"count"`
 }
 
-func (c *Client) Availability(campgroundID int, month string) (map[string]Campsite, error) {
+func (c *Client) Availability(campgroundID string, month string) (map[string]Campsite, error) {
 	c.log.Debug("Checking campground availability", "campgroundID", campgroundID, "month", month)
 
 	path := fmt.Sprintf(availEndpoint, campgroundID)
