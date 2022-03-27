@@ -3,26 +3,33 @@ Copyright © 2022 Kyle Chadha @kylechadha
 */
 package notify
 
-import "github.com/inconshreveable/log15"
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/inconshreveable/log15"
+)
 
 type App struct {
 	cfg *Config
 	log log15.Logger
 
-	client    *Client
-	notifiers []Notifier
+	client        *Client
+	smsNotifier   Notifier
+	emailNotifier Notifier
 }
 
 type Notifier interface {
-	// Notify(to string, campground, checkInDate, checkOutDate string, available []string) error
-	Notify(to string, available []string) error
+	Notify(to string, campgroundName, checkInDate, checkOutDate string, available []string) error
 }
 
 func New(log log15.Logger, cfg *Config) *App {
 	return &App{
-		cfg:    cfg,
-		log:    log,
-		client: NewClient(log),
+		cfg:         cfg,
+		log:         log,
+		client:      NewClient(log),
+		smsNotifier: NewSMSNotifier(log, cfg.SMSFrom),
 	}
 }
 
@@ -30,8 +37,78 @@ func (a *App) Search(query string) ([]Campground, error) {
 	return a.client.Search(query)
 }
 
-func (a *App) Poll() {
+// Poll is a blocking operation. To poll multiple campgrounds call this method
+// in its own goroutine.
+func (a *App) Poll(ctx context.Context, campgroundID string, start, end time.Time) (availabilities []string, err error) {
+	t := time.NewTicker(a.cfg.PollInterval)
 
+	for {
+		select {
+		case <-t.C:
+			curPeriod := fmt.Sprintf("%d-%02d", start.Year(), start.Month())
+			endPeriod := fmt.Sprintf("%d-%02d", end.Year(), end.Month())
+
+			var months []string
+			months = append(months, curPeriod)
+
+			// Determine months in date range.
+			initial := start
+			for curPeriod != endPeriod {
+				start = start.AddDate(0, 1, 0)
+				curPeriod = fmt.Sprintf("%d-%02d", start.Year(), start.Month())
+				months = append(months, curPeriod)
+			}
+			start = initial
+
+			// Build availability map.
+			available := make(map[string]map[string]bool)
+			for _, m := range months {
+				campsites, err := a.client.Availability(campgroundID, m)
+				if err != nil {
+					return nil, fmt.Errorf("Couldn't retrieve availabilities: %w", err)
+				}
+
+				for _, c := range campsites {
+					for date, a := range c.Availabilities {
+						if a == "Available" {
+							if available[c.Site] == nil {
+								available[c.Site] = make(map[string]bool)
+							}
+
+							available[c.Site][date] = true
+						}
+					}
+				}
+			}
+
+			// Check for contiguous availability.
+			var results []string
+		Outer:
+			for site, dates := range available {
+				start = initial
+				for !start.After(end) {
+					date := fmt.Sprintf("%sT00:00:00Z", start.Format("2006-01-02"))
+					if dates[date] {
+						a.log.Debug(fmt.Sprintf("Site %s available for %s", site, start.Format("2006-01-02")))
+						start = start.AddDate(0, 0, 1)
+					} else {
+						continue Outer
+					}
+				}
+
+				a.log.Info(fmt.Sprintf("Site %s is available!", site))
+				results = append(results, site)
+			}
+
+			if len(results) > 0 {
+				return results, nil
+			}
+			a.log.Info("Sorry, no available campsites were found for your dates. We'll try again in %v!", a.cfg.PollInterval)
+
+		case <-ctx.Done():
+			return nil, nil
+		}
+	}
 }
 
 func (a *App) Notify() {

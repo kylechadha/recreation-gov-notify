@@ -45,18 +45,8 @@ import (
 // -- can put this information in now if you haven't already
 
 func oldMain() {
-	exitCode := 0
-	defer func() {
-		os.Exit(exitCode)
-	}()
-
 	l := log15.New()
 	client := http.Client{}
-
-	debug := true
-	if !debug {
-		l.SetHandler(log15.LvlFilterHandler(log15.LvlInfo, log15.StdoutHandler))
-	}
 
 	from := os.Getenv("TWILIO_FROM")
 	smsNotify := NewSMSNotifier(l, from)
@@ -77,9 +67,6 @@ func oldMain() {
 		}
 
 		for i, campground := range campgrounds {
-			if campground.EntityType != "campground" {
-				continue
-			}
 			if !displayed {
 				fmt.Println("Select the number that best matches")
 				displayed = true

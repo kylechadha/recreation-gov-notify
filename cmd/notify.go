@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -17,11 +18,14 @@ import (
 )
 
 func runNotify(cfg *notify.Config) {
+	ctx := context.Background()
 	log := log15.New()
 	if !cfg.Debug {
 		log.SetHandler(log15.LvlFilterHandler(log15.LvlInfo, log15.StdoutHandler))
 	}
 
+	// ** remove once set by CLI init
+	cfg.PollInterval = time.Minute
 	app := notify.New(log, cfg)
 	reader := bufio.NewReader(os.Stdin)
 
@@ -36,7 +40,7 @@ Outer:
 			fmt.Printf("Sorry, there was an error, please try again. Error : %w\n", err)
 			continue
 		}
-		query := strings.Replace(input, "\n", "", -1) // convert CRLF to LF
+		query := strings.Replace(input, "\n", "", -1) // Convert CRLF to LF.
 
 		campgrounds, err := app.Search(query)
 		if err != nil {
@@ -87,7 +91,7 @@ Outer:
 			fmt.Printf("Sorry, there was an error, please try again. Error : %w\n", err)
 			continue
 		}
-		checkInDate = strings.Replace(input, "\n", "", -1) // convert CRLF to LF
+		checkInDate = strings.Replace(input, "\n", "", -1) // Convert CRLF to LF.
 
 		start, err = time.Parse("01-02-2006", checkInDate)
 		if err != nil {
@@ -108,14 +112,14 @@ Outer:
 			fmt.Printf("Sorry, there was an error, please try again. Error : %w\n", err)
 			continue
 		}
-		checkOutDate = strings.Replace(input, "\n", "", -1) // convert CRLF to LF
+		checkOutDate = strings.Replace(input, "\n", "", -1) // Convert CRLF to LF.
 
-		endRaw, err := time.Parse("01-02-2006", checkOutDate)
+		endUnadjusted, err := time.Parse("01-02-2006", checkOutDate)
 		if err != nil {
 			fmt.Println("Sorry I couldn't parse that date. please try again. Error : %w\n", err)
 			continue
 		}
-		end = endRaw.AddDate(0, 0, -1) // checkOutDate does not need to be available
+		end = endUnadjusted.AddDate(0, 0, -1) // checkOutDate does not need to be available.
 
 		if start.After(end) {
 			fmt.Println("Check out needs to be after check in ;)")
@@ -123,5 +127,6 @@ Outer:
 		}
 	}
 
-	fmt.Printf("Alright! Searching recreation.gov availability for %s from %s to %s\n", campground.Name, checkInDate, checkOutDate)
+	fmt.Printf("Now we're in business! Searching recreation.gov availability for %s from %s to %s\n", campground.Name, checkInDate, checkOutDate)
+	availabilities, err := app.Poll(ctx, campground.EntityID, start, end)
 }
