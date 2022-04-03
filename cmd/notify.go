@@ -24,6 +24,9 @@ func runNotify(cfg *notify.Config) {
 		log.SetHandler(log15.LvlFilterHandler(log15.LvlInfo, log15.StdoutHandler))
 	}
 
+	// ** Do we want to have a separate config for the CLI app that includes SMSTo and EmailTo, and then
+	// embeds or includes the App config?
+
 	// ** remove once set by CLI init
 	cfg.PollInterval = time.Minute
 	app := notify.New(log, cfg)
@@ -129,4 +132,25 @@ Outer:
 
 	fmt.Printf("Now we're in business! Searching recreation.gov availability for %s from %s to %s\n", campground.Name, checkInDate, checkOutDate)
 	availabilities, err := app.Poll(ctx, campground.EntityID, start, end)
+	if err != nil {
+		log.Error("There was an unrecoverable error: %w", err)
+		return
+	}
+
+	// **
+	smsTo := "+18582310672"
+	emailTo := "kyle.chadha@gmail.com"
+
+	if smsTo != "" {
+		err := app.SMSNotify(smsTo, campground.Name, checkInDate, checkOutDate, availabilities)
+		if err != nil {
+			log.Error("Could not send SMS message", "err", err)
+		}
+	}
+	if emailTo != "" {
+		err := app.EmailNotify(emailTo, campground.Name, checkInDate, checkOutDate, availabilities)
+		if err != nil {
+			log.Error("Could not send SMS message", "err", err)
+		}
+	}
 }

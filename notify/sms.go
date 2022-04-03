@@ -33,7 +33,7 @@ The following sites are available for '%s' from %s to %s:
 
 %s`
 
-func (n SMSNotifier) Notify(to string, campgroundName, checkInDate, checkOutDate string, available []string) error {
+func (n *SMSNotifier) Notify(to string, campgroundName, checkInDate, checkOutDate string, available []string) error {
 	params := &openapi.CreateMessageParams{}
 	params.SetTo(to)
 	params.SetFrom(n.fromNumber)

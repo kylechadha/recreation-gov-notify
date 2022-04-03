@@ -111,6 +111,13 @@ func (a *App) Poll(ctx context.Context, campgroundID string, start, end time.Tim
 	}
 }
 
-func (a *App) Notify() {
+// TODO: This pattern feels a bit odd, but want to leave the notifiers decoupled
+// for testing and in case we want to poll/notify for multiple requests (ie: if
+// we add a webapp frontend or something).
+func (a *App) SMSNotify(toNumber string, campgroundName, checkInDate, checkOutDate string, available []string) error {
+	return a.smsNotifier.Notify(toNumber, campgroundName, checkInDate, checkOutDate, available)
+}
 
+func (a *App) EmailNotify(toEmail string, campgroundName, checkInDate, checkOutDate string, available []string) error {
+	return a.emailNotifier.Notify(toEmail, campgroundName, checkInDate, checkOutDate, available)
 }
