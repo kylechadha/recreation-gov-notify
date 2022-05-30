@@ -7,4 +7,6 @@ type Config struct {
 	PollInterval time.Duration
 	SMSFrom      string
 	EmailFrom    string
+	SMSTo        string
+	EmailTo      string
 }

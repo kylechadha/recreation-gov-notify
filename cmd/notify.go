@@ -19,10 +19,11 @@ import (
 
 func runNotify(cfg *notify.Config) {
 	ctx := context.Background()
-	log := log15.New()
+	log := log15.New("module", "notify")
 	if !cfg.Debug {
 		log.SetHandler(log15.LvlFilterHandler(log15.LvlInfo, log15.StdoutHandler))
 	}
+	log.Debug("Using config", "config", cfg)
 
 	// ** Do we want to have a separate config for the CLI app that includes SMSTo and EmailTo, and then
 	// embeds or includes the App config?
@@ -128,6 +129,7 @@ Outer:
 			fmt.Println("Check out needs to be after check in ;)")
 			continue
 		}
+		break
 	}
 
 	fmt.Printf("Now we're in business! Searching recreation.gov availability for %s from %s to %s\n", campground.Name, checkInDate, checkOutDate)
@@ -136,21 +138,25 @@ Outer:
 		log.Error("There was an unrecoverable error: %w", err)
 		return
 	}
+	log.Info("Found availabilities", "availabilities", availabilities)
 
 	// **
-	smsTo := "+18582310672"
-	emailTo := "kyle.chadha@gmail.com"
+	smsTo := cfg.SMSTo
+	emailTo := cfg.EmailTo
 
 	if smsTo != "" {
+		log.Info("Sending SMS", "to", smsTo)
 		err := app.SMSNotify(smsTo, campground.Name, checkInDate, checkOutDate, availabilities)
 		if err != nil {
 			log.Error("Could not send SMS message", "err", err)
 		}
 	}
 	if emailTo != "" {
+		log.Info("Sending SMS", "to", smsTo)
 		err := app.EmailNotify(emailTo, campground.Name, checkInDate, checkOutDate, availabilities)
 		if err != nil {
 			log.Error("Could not send SMS message", "err", err)
 		}
 	}
+	log.Info("Have a good trip!")
 }
