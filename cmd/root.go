@@ -5,10 +5,10 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-
+	"github.com/kylechadha/recreation-gov-notify/notify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
 var cfgFile string
@@ -25,8 +25,27 @@ you select. That way you can grab up any last minute cancelations.
 
 Get notified by SMS or email. Maybe other stuff in the future, too!`,
 	Run: func(cmd *cobra.Command, args []string) {
-		runNotify()
+		runNotify(unmarshallConfig())
 	},
+}
+
+func unmarshallConfig() *notify.Config {
+	config := &notify.Config{}
+	err := viper.Unmarshal(config)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Unable to read configuration:", viper.ConfigFileUsed(), err)
+		return nil
+	}
+	if config.PollInterval == 0 {
+		config.PollInterval = 30 * 1000000000
+	}
+	if config.SMSFrom == "" {
+		config.SMSFrom = config.SMSTo
+	}
+	if config.EmailFrom == "" {
+		config.EmailFrom = config.EmailTo
+	}
+	return config
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -41,7 +41,7 @@ func (n *SMSNotifier) Notify(to string, campgroundName, checkInDate, checkOutDat
 	sites := " - Site " + strings.Join(available, "\n - Site ")
 	params.SetBody(fmt.Sprintf(SMSTemplate, campgroundName, checkInDate, checkOutDate, sites))
 
-	resp, err := n.client.ApiV2010.CreateMessage(params)
+	resp, err := n.client.Api.CreateMessage(params)
 	if err != nil {
 		return err
 	}

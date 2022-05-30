@@ -26,10 +26,11 @@ type Notifier interface {
 
 func New(log log15.Logger, cfg *Config) *App {
 	return &App{
-		cfg:         cfg,
-		log:         log,
-		client:      NewClient(log),
-		smsNotifier: NewSMSNotifier(log, cfg.SMSFrom),
+		cfg:           cfg,
+		log:           log,
+		client:        NewClient(log),
+		smsNotifier:   NewSMSNotifier(log, cfg.SMSFrom),
+		emailNotifier: NewEmailNotifier(log, cfg.SMSFrom),
 	}
 }
 
@@ -88,22 +89,24 @@ func (a *App) Poll(ctx context.Context, campgroundID string, start, end time.Tim
 				start = initial
 				for !start.After(end) {
 					date := fmt.Sprintf("%sT00:00:00Z", start.Format("2006-01-02"))
+					a.log.Debug(fmt.Sprintf("Cheking if %s is available for %s", site, date))
 					if dates[date] {
-						a.log.Debug(fmt.Sprintf("Site %s available for %s", site, start.Format("2006-01-02")))
+						a.log.Debug(fmt.Sprintf("%s is available for %s", site, date))
 						start = start.AddDate(0, 0, 1)
 					} else {
+						a.log.Debug(fmt.Sprintf("%s is NOT available for %s", site, date))
 						continue Outer
 					}
 				}
 
-				a.log.Info(fmt.Sprintf("Site %s is available!", site))
+				a.log.Info(fmt.Sprintf("%s is available!", site))
 				results = append(results, site)
 			}
 
 			if len(results) > 0 {
 				return results, nil
 			}
-			a.log.Info("Sorry, no available campsites were found for your dates. We'll try again in %v!", a.cfg.PollInterval)
+			a.log.Info("Sorry, no available campsites were found for your dates. We'll try again.")
 
 		case <-ctx.Done():
 			return nil, nil
